@@ -48,11 +48,15 @@ def log_operation(user, action, detail):
     save_data(df_log, FILE_LOG)
 
 # --- 版面設定 ---
-st.set_page_config(page_title="銷售獎勵系統 v7.0", layout="wide", page_icon="💰")
+st.set_page_config(page_title="銷售獎勵系統 v8.0 by seraph", layout="wide", page_icon="💰")
 init_data()
 
+# 初始化頁面狀態 (用於按鈕導航)
+if 'current_page' not in st.session_state:
+    st.session_state.current_page = "sales_entry" # 預設首頁
+
 # ==========================================
-# 🎨 左側邊欄
+# 🎨 左側邊欄 (按鈕式導航)
 # ==========================================
 with st.sidebar:
     st.markdown("## 💰 銷售獎勵系統")
@@ -60,12 +64,19 @@ with st.sidebar:
     st.markdown("---")
 
     st.markdown("### 📌 功能選單")
-    choice = st.radio(
-        "請選擇功能：",
-        ["📝 銷售登記", "⚙️ 後台管理", "📊 業績統計與匯出"],
-        index=0,
-        label_visibility="collapsed"
-    )
+    
+    # 修改 4: 改為按鈕式選單 (use_container_width=True 讓按鈕填滿寬度)
+    if st.button("📝 銷售登記", use_container_width=True):
+        st.session_state.current_page = "sales_entry"
+        st.rerun()
+    
+    if st.button("⚙️ 後台管理", use_container_width=True):
+        st.session_state.current_page = "backend"
+        st.rerun()
+        
+    if st.button("📊 業績統計與匯出", use_container_width=True):
+        st.session_state.current_page = "stats"
+        st.rerun()
     
     st.markdown("---")
 
@@ -74,16 +85,16 @@ with st.sidebar:
         st.session_state.is_admin = False
 
     if st.session_state.is_admin:
-        with st.container():
+        with st.container(border=True):
             st.success("✅ 管理員已登入")
-            st.caption("您可以編輯所有設定與刪除紀錄")
             if st.button("登出系統", use_container_width=True):
                 log_operation("系統", "管理員登出", "登出成功")
                 st.session_state.is_admin = False
                 st.rerun()
     else:
         with st.expander("管理員登入 / 權限解鎖"):
-            pwd_input = st.text_input("輸入密碼", type="password", placeholder="預設: 8888")
+            # 修改 3: 移除 placeholder 中的密碼提示
+            pwd_input = st.text_input("輸入密碼", type="password", placeholder="請輸入密碼")
             if st.button("驗證登入", use_container_width=True):
                 if pwd_input == ADMIN_PASSWORD:
                     st.session_state.is_admin = True
@@ -94,18 +105,18 @@ with st.sidebar:
                     st.error("密碼錯誤")
     
     st.markdown("---")
-    st.caption("© 2025 Sales System v7.0")
+    st.caption("© 2025 Sales System v8.0")
 
 # ==========================================
 # 主畫面內容
 # ==========================================
 
-st.title(f"{choice.split(' ')[1]}")
-
 # ------------------------------------------
-# 功能 1: 銷售登記
+# 頁面 1: 銷售登記
 # ------------------------------------------
-if choice == "📝 銷售登記":
+if st.session_state.current_page == "sales_entry":
+    st.title("📝 銷售登記")
+    
     df_products = load_data(FILE_PRODUCTS)
     df_employees = load_data(FILE_EMPLOYEES)
     df_sales = load_data(FILE_SALES)
@@ -157,13 +168,20 @@ if choice == "📝 銷售登記":
             st.dataframe(df_sales.tail(5).sort_index(ascending=False), use_container_width=True)
 
 # ------------------------------------------
-# 功能 2: 後台管理
+# 頁面 2: 後台管理
 # ------------------------------------------
-elif choice == "⚙️ 後台管理":
+elif st.session_state.current_page == "backend":
+    st.title("⚙️ 後台管理")
     
-    tab1, tab2, tab3, tab4 = st.tabs(["🎁 商品設定", "👥 員工設定", "🗑️ 銷售紀錄管理", "📜 系統日誌"])
+    # 修改 2: 動態產生分頁
+    # 如果是管理員，顯示完整功能；如果是一般人，只顯示商品和員工清單
+    if st.session_state.is_admin:
+        tabs = st.tabs(["🎁 商品設定", "👥 員工設定", "🗑️ 銷售紀錄管理", "📜 系統日誌"])
+    else:
+        tabs = st.tabs(["🎁 商品列表", "👥 員工列表"])
 
-    with tab1:
+    # --- Tab 1: 商品 ---
+    with tabs[0]:
         df_products = load_data(FILE_PRODUCTS)
         st.dataframe(df_products, use_container_width=True)
 
@@ -187,7 +205,7 @@ elif choice == "⚙️ 後台管理":
                         st.rerun()
             
             if not df_products.empty:
-                with st.expander("⚠️ 刪除商品 (點擊展開)"):
+                with st.expander("⚠️ 刪除商品"):
                     del_prod = st.selectbox("選擇商品", df_products['商品名稱'].tolist())
                     if st.button("確認刪除商品"):
                         df_products = df_products[df_products['商品名稱'] != del_prod]
@@ -195,9 +213,10 @@ elif choice == "⚙️ 後台管理":
                         log_operation("管理員", "刪除商品", del_prod)
                         st.rerun()
         else:
-            st.info("🔒 請先於左側登入管理員")
+            st.info("💡 登入管理員後可進行編輯。")
 
-    with tab2:
+    # --- Tab 2: 員工 ---
+    with tabs[1]:
         df_employees = load_data(FILE_EMPLOYEES)
         st.table(df_employees)
 
@@ -213,7 +232,7 @@ elif choice == "⚙️ 後台管理":
                         st.rerun()
             
             if not df_employees.empty:
-                 with st.expander("⚠️ 刪除員工 (點擊展開)"):
+                 with st.expander("⚠️ 刪除員工"):
                     del_emp = st.selectbox("選擇員工", df_employees['員工姓名'].tolist())
                     if st.button("確認刪除員工"):
                         df_employees = df_employees[df_employees['員工姓名'] != del_emp]
@@ -221,17 +240,19 @@ elif choice == "⚙️ 後台管理":
                         log_operation("管理員", "刪除員工", del_emp)
                         st.rerun()
         else:
-            st.info("🔒 請先於左側登入管理員")
+            st.info("💡 登入管理員後可進行編輯。")
 
-    with tab3:
-        df_sales = load_data(FILE_SALES)
-        if not df_sales.empty:
-            st.dataframe(df_sales, use_container_width=True)
-            if st.session_state.is_admin:
-                st.markdown("#### 🗑️ 刪除紀錄")
+    # --- Tab 3 & 4: 只有管理員看得到 ---
+    if st.session_state.is_admin:
+        with tabs[2]:
+            st.subheader("🗑️ 銷售紀錄管理")
+            df_sales = load_data(FILE_SALES)
+            if not df_sales.empty:
+                st.dataframe(df_sales, use_container_width=True)
+                st.markdown("#### 選擇要刪除的資料")
                 options = [f"{i}: {row['日期']} | {row['員工姓名']} | {row['商品名稱']} (x{row['數量']})" 
                            for i, row in df_sales.iterrows()]
-                selected_option = st.selectbox("選擇要刪除的項目", ["請選擇"] + options)
+                selected_option = st.selectbox("選擇項目", ["請選擇"] + options)
                 if st.button("確認刪除此筆"):
                     if selected_option != "請選擇":
                         idx = int(selected_option.split(":")[0])
@@ -242,28 +263,27 @@ elif choice == "⚙️ 後台管理":
                         st.success("已刪除")
                         st.rerun()
             else:
-                 st.info("🔒 請先於左側登入管理員")
-        else:
-            st.write("無資料")
+                st.write("目前無銷售資料。")
 
-    with tab4:
-        df_log = load_data(FILE_LOG)
-        st.dataframe(df_log.sort_index(ascending=False), use_container_width=True)
+        with tabs[3]:
+            st.subheader("📜 系統操作日誌")
+            df_log = load_data(FILE_LOG)
+            st.dataframe(df_log.sort_index(ascending=False), use_container_width=True)
 
 # ------------------------------------------
-# 功能 3: 統計與匯出
+# 頁面 3: 統計與匯出
 # ------------------------------------------
-elif choice == "📊 業績統計與匯出":
+elif st.session_state.current_page == "stats":
+    st.title("📊 業績統計與匯出")
     
     df_sales = load_data(FILE_SALES)
 
     if not df_sales.empty:
-        # 確保數值欄位格式正確
         df_sales['數量'] = pd.to_numeric(df_sales['數量'], errors='coerce').fillna(0)
         df_sales['總獎金'] = pd.to_numeric(df_sales['總獎金'], errors='coerce').fillna(0)
         df_sales['當時單件獎金'] = pd.to_numeric(df_sales['當時單件獎金'], errors='coerce').fillna(0)
 
-        # 1. 總覽 Pivot (簡單版)
+        # 1. 總覽
         st.subheader("🏆 人員獎金排行榜")
         pivot_total = df_sales.pivot_table(
             index='員工姓名', values=['數量', '總獎金'], aggfunc='sum'
@@ -271,20 +291,15 @@ elif choice == "📊 業績統計與匯出":
         
         st.dataframe(pivot_total.style.format({"總獎金": "${:,.0f}"}), use_container_width=True)
 
-        # 2. 詳細 Pivot (包含單件獎勵) --- 這裡做了修改
-        st.subheader("📦 各人員銷售商品明細 (含設定獎金)")
-        
-        # 我們將「當時單件獎金」也放入 index 中，這樣它就會顯示出來
+        # 2. 詳細明細
+        st.subheader("📦 各人員銷售商品明細")
         pivot_detail = df_sales.pivot_table(
             index=['員工姓名', '商品名稱', '當時單件獎金'], 
             values=['數量', '總獎金'], 
             aggfunc='sum'
         ).reset_index()
 
-        # 欄位更名，讓使用者更容易看得懂
         pivot_detail.rename(columns={'當時單件獎金': '單件獎勵(設定值)'}, inplace=True)
-        
-        # 重新排序與整理欄位順序
         pivot_detail = pivot_detail[['員工姓名', '商品名稱', '單件獎勵(設定值)', '數量', '總獎金']]
         pivot_detail = pivot_detail.sort_values(by=['員工姓名', '總獎金'], ascending=[True, False])
 
@@ -292,23 +307,21 @@ elif choice == "📊 業績統計與匯出":
 
         # 3. 匯出 Excel
         st.divider()
-        st.markdown("### 📥 匯出完整報表")
+        st.markdown("### 📥 匯出報表")
         
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             # Sheet 1: 總表
             pivot_total.to_excel(writer, sheet_name='1.人員獎金總表', index=False)
             
-            # Sheet 2: 詳細明細 (員工-商品-單價)
+            # Sheet 2: 詳細明細
             pivot_detail.to_excel(writer, sheet_name='2.銷售明細(含單價)', index=False)
             
             # Sheet 3: 原始資料
             df_sales.to_excel(writer, sheet_name='3.原始流水帳', index=False)
             
-            # Sheet 4: 操作紀錄
-            df_log_export = load_data(FILE_LOG)
-            if not df_log_export.empty:
-                df_log_export.to_excel(writer, sheet_name='4.系統操作日誌', index=False)
+            # 修改 1: 移除日誌匯出
+            # (已移除 df_log_export 的寫入程式碼)
         
         excel_data = output.getvalue()
         filename = f"銷售獎勵總表_{datetime.now().strftime('%Y%m%d')}.xlsx"
