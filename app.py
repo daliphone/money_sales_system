@@ -48,7 +48,7 @@ def log_operation(user, action, detail):
     save_data(df_log, FILE_LOG)
 
 # --- 版面設定 ---
-st.set_page_config(page_title="銷售獎勵系統 v8.0 by seraph", layout="wide", page_icon="💰")
+st.set_page_config(page_title="馬尼商品獎勵系統 v8.1", layout="wide", page_icon="💰")
 init_data()
 
 # 初始化頁面狀態 (用於按鈕導航)
@@ -59,13 +59,13 @@ if 'current_page' not in st.session_state:
 # 🎨 左側邊欄 (按鈕式導航)
 # ==========================================
 with st.sidebar:
-    st.markdown("## 💰 銷售獎勵系統")
+    st.markdown("## 💰 馬尼商品獎勵系統")
     st.caption(f"📅 今天是：{datetime.now().strftime('%Y-%m-%d')}")
     st.markdown("---")
 
     st.markdown("### 📌 功能選單")
     
-    # 修改 4: 改為按鈕式選單 (use_container_width=True 讓按鈕填滿寬度)
+    # 按鈕式選單
     if st.button("📝 銷售登記", use_container_width=True):
         st.session_state.current_page = "sales_entry"
         st.rerun()
@@ -93,7 +93,6 @@ with st.sidebar:
                 st.rerun()
     else:
         with st.expander("管理員登入 / 權限解鎖"):
-            # 修改 3: 移除 placeholder 中的密碼提示
             pwd_input = st.text_input("輸入密碼", type="password", placeholder="請輸入密碼")
             if st.button("驗證登入", use_container_width=True):
                 if pwd_input == ADMIN_PASSWORD:
@@ -105,7 +104,8 @@ with st.sidebar:
                     st.error("密碼錯誤")
     
     st.markdown("---")
-    st.caption("© 2025 Sales System v8.0")
+    # 【這裡就是您要修改的地方】
+    st.caption("© 2025 馬尼商品獎勵系統 v8.1")
 
 # ==========================================
 # 主畫面內容
@@ -173,8 +173,6 @@ if st.session_state.current_page == "sales_entry":
 elif st.session_state.current_page == "backend":
     st.title("⚙️ 後台管理")
     
-    # 修改 2: 動態產生分頁
-    # 如果是管理員，顯示完整功能；如果是一般人，只顯示商品和員工清單
     if st.session_state.is_admin:
         tabs = st.tabs(["🎁 商品設定", "👥 員工設定", "🗑️ 銷售紀錄管理", "📜 系統日誌"])
     else:
@@ -319,9 +317,6 @@ elif st.session_state.current_page == "stats":
             
             # Sheet 3: 原始資料
             df_sales.to_excel(writer, sheet_name='3.原始流水帳', index=False)
-            
-            # 修改 1: 移除日誌匯出
-            # (已移除 df_log_export 的寫入程式碼)
         
         excel_data = output.getvalue()
         filename = f"銷售獎勵總表_{datetime.now().strftime('%Y%m%d')}.xlsx"
